@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Grow A Garden</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-4 md:p-8">
+    <h1 class="text-3xl font-bold">Cửa hàng</h1>
+    <div id="product-grid"></div>
+    <h2 class="text-2xl font-bold mt-6">Giỏ hàng</h2>
+    <div id="cart-items"></div>
+    <div id="cart-total"></div>
+    <h2 class="text-2xl font-bold mt-6">Thông tin đặt hàng</h2>
+    <form id="order-form">
+        <input id="full-name" placeholder="Họ và tên" required><br>
+        <input id="email" placeholder="Email" required><br>
+        <input id="phone" placeholder="Số điện thoại" required><br>
+        <textarea id="address" placeholder="Địa chỉ" required></textarea><br>
+        <button type="submit">Đặt hàng</button>
+    </form>
+    <div id="status-message"></div>
+
+    <script>
+        let products = [];
+        let cart = [];
+
+        async function fetchProducts() {
+            const res = await fetch("/api/products");
+            products = await res.json();
+            document.getElementById('product-grid').innerHTML = products.map(p => `
+                <div>
+                    <h3>${p.name}</h3>
+                    <p>${p.price}₫</p>
+                    <button onclick="addToCart(${p.id})">Thêm vào giỏ</button>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id) {
+            const item = cart.find(i => i.id === id);
+            if (item) item.quantity++;
+            else cart.push({ id, quantity: 1 });
+            renderCart();
+        }
+
+        function renderCart() {
+            const cartItems = document.getElementById('cart-items');
+            let total = 0;
+            cartItems.innerHTML = cart.map(item => {
+                const p = products.find(pr => pr.id === item.id);
+                total += p.price * item.quantity;
+                return `<div>${p.name} x ${item.quantity} = ${p.price * item.quantity}₫</div>`;
+            }).join('');
+            document.getElementById('cart-total').innerText = "Tổng cộng: " + total + "₫";
+        }
+
+        document.getElementById('order-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const order = {
+                name: document.getElementById('full-name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                items: cart
+            };
+            const res = await fetch("/api/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(order)
+            });
+            if (res.ok) {
+                document.getElementById('status-message').innerText = "Đặt hàng thành công!";
+                cart = [];
+                renderCart();
+                document.getElementById('order-form').reset();
+            } else {
+                document.getElementById('status-message').innerText = "Đặt hàng thất bại!";
+            }
+        });
+
+        fetchProducts();
+    </script>
+</body>
+</html>
